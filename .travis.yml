@@ -5,7 +5,6 @@ matrix:
       rust:
         - stable
       before_script:
-        - cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64
         - rustup toolchain install stable-x86_64-pc-windows-msvc
         - rustup default stable-msvc
 
@@ -14,10 +13,9 @@ matrix:
       rust:
         - nightly
       before_script:
-        - cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64
         - rustup toolchain install nightly-x86_64-pc-windows-msvc
         - rustup default nightly-msvc
-    
+
     - os: linux
       language: rust
       rust:
