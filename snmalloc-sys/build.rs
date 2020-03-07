@@ -16,6 +16,10 @@ fn main() {
         cfg = cfg.define("CMAKE_CXX_FLAGS_RELEASE", "/MD /O2 /Ob2 /DNDEBUG");
         cfg = cfg.define("CMAKE_C_FLAGS_RELEASE", "/MD /O2 /Ob2 /DNDEBUG");
     }
+    
+    if cfg!(all(windows, target_env = "gnu")) {
+        cfg = cfg.define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
+    }
 
     let target = if cfg!(feature = "1mib") {
         "snmallocshim-1mib-rust"
