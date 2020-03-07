@@ -15,6 +15,16 @@ matrix:
       before_script:
         - rustup toolchain install nightly-x86_64-pc-windows-msvc
         - rustup default nightly-msvc
+        
+    - os: windows
+      language: rust
+      rust:
+        - stable
+
+    - os: windows
+      language: rust
+      rust:
+        - nightly
 
     - os: linux
       language: rust
