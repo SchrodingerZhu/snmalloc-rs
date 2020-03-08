@@ -7,6 +7,9 @@ task:
   install_script: |
     pkg install -y rust
     pkg install -y cmake
-  build_script: cargo build --all
+    pkg install -y git
+  build_script: |
+    git submodule update --init
+    cargo build --all
   test_script: cargo test --all --all-targets
   
