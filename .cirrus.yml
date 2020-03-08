@@ -4,7 +4,9 @@ task:
   name: cargo test (stable)
   env:
     HOME: /tmp # cargo needs it
-  install_script: pkg install -y rust cmake
+  install_script: |
+    pkg install -y rust
+    pkg install -y cmake
   build_script: cargo build --all
   test_script: cargo test --all --all-targets
   
