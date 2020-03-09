@@ -26,6 +26,7 @@ matrix:
       language: rust
       rust:
         - nightly
+      env:
         - MING64_BIN=C:\tools\msys64\mingw64\bin
       
         
