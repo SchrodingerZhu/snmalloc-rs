@@ -38,13 +38,15 @@ fn main() {
     println!("cargo:rustc-link-lib={}", target);
     
     if cfg!(all(windows, target_env = "msvc")) {
+        println!("cargo:rustc-link-lib=dylib=mincore");
         println!("cargo:rustc-link-search=native={}/{}", dst.display(), build_type);
     } else {
         println!("cargo:rustc-link-search=native={}", dst.display());
     }
     
-    if cfg!(target_os = "windows") {
-        println!("cargo:rustc-link-lib=dylib=mincore");
+    if cfg!(all(windows, target_env = "gnu")) {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
+        println!("cargo:rustc-link-lib=dylib=atomic");
     }
     
     if cfg!(target_os = "macos") {
