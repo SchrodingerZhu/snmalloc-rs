@@ -4,6 +4,19 @@ matrix:
       language: rust
       rust:
         - stable
+      env:
+        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
+    - os: windows
+      language: rust
+      rust:
+        - nightly
+      env:
+        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
+
+    - os: windows
+      language: rust
+      rust:
+        - stable
       before_script:
         - rustup toolchain install stable-x86_64-pc-windows-msvc
         - rustup default stable-msvc
@@ -15,21 +28,7 @@ matrix:
       before_script:
         - rustup toolchain install nightly-x86_64-pc-windows-msvc
         - rustup default nightly-msvc
-    
-    - os: windows
-      language: rust
-      rust:
-        - stable
-      env:
-        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
-    - os: windows
-      language: rust
-      rust:
-        - nightly
-      env:
-        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
-      
-        
+
     - os: linux
       language: rust
       rust:
