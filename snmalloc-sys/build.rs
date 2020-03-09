@@ -53,7 +53,7 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=gcc_s");
         println!("cargo:rustc-link-lib=dylib=winpthread");
         println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=dylib=atomic-1"); /// TODO: fix me
+        println!("cargo:rustc-link-lib=dylib=atomic-1"); // TODO: fix me
     }
     
     if cfg!(target_os = "macos") {
