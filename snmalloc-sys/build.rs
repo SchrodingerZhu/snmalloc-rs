@@ -45,7 +45,7 @@ fn main() {
     }
     
     if cfg!(all(windows, target_env = "gnu")) {
-        let path = std::env::var("MINGW64_BIN").unwrap_or_else(|e| {
+        let path = std::env::var("MINGW64_BIN").unwrap_or_else(|_| {
             eprintln!("please set MINGW64_BIN so that we can link atomic library");
             std::process::exit(1);
         });
