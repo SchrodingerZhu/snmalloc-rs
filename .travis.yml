@@ -20,10 +20,13 @@ matrix:
       language: rust
       rust:
         - stable
+      env:
+        - MING64_BIN=C:\tools\msys64\mingw64\bin
     - os: windows
       language: rust
       rust:
         - nightly
+        - MING64_BIN=C:\tools\msys64\mingw64\bin
       
         
     - os: linux

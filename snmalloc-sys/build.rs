@@ -45,8 +45,15 @@ fn main() {
     }
     
     if cfg!(all(windows, target_env = "gnu")) {
+        let path = std::env::var("MINGW64_BIN").unwrap_or_else(|e| {
+            eprintln!("please set MINGW64_BIN so that we can link atomic library");
+            std::process::exit(1);
+        });
+        println!("cargo:rustc-link-search=native={}", path);
+        println!("cargo:rustc-link-lib=dylib=gcc_s");
+        println!("cargo:rustc-link-lib=dylib=winpthread");
         println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=dylib=atomic");
+        println!("cargo:rustc-link-lib=dylib=atomic-1"); /// TODO: fix me
     }
     
     if cfg!(target_os = "macos") {
