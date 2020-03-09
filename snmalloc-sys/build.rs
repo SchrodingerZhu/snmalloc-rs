@@ -50,10 +50,10 @@ fn main() {
             std::process::exit(1);
         });
         println!("cargo:rustc-link-search=native={}", path);
-        println!("cargo:rustc-link-lib=dylib=gcc_s");
-        println!("cargo:rustc-link-lib=dylib=winpthread");
         println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=dylib=atomic-1"); // TODO: fix me
+        println!("cargo:rustc-link-lib=dylib=winpthread");
+        println!("cargo:rustc-link-lib=dylib=gcc_s");
     }
     
     if cfg!(target_os = "macos") {
