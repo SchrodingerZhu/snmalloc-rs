@@ -21,13 +21,13 @@ matrix:
       rust:
         - stable
       env:
-        - MINGW64_BIN=C:\tools\msys64\mingw64\bin
+        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
     - os: windows
       language: rust
       rust:
         - nightly
       env:
-        - MINGW64_BIN=C:\tools\msys64\mingw64\bin
+        - MINGW64_BIN=C:\\tools\\msys64\\mingw64\\bin
       
         
     - os: linux
