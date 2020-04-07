@@ -64,7 +64,9 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
+            - gcc-9
             - g++-9
+            - libstdc++-9-dev
       env:
         - CC=gcc-9
         - CXX=g++-9
@@ -80,7 +82,9 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
+            - gcc-9
             - g++-9
+            - libstdc++-9-dev
       env:
         - CC=gcc-9
         - CXX=g++-9
