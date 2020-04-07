@@ -59,18 +59,6 @@ matrix:
       language: rust
       rust:
         - stable
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-9
-            - g++-9
-            - libstdc++-9-dev
-            - libgcc-9-dev
-      env:
-        - CC=gcc-9
-        - CXX=g++-9
 
     - os: linux
       dist: bionic
@@ -78,18 +66,6 @@ matrix:
       language: rust
       rust:
         - nightly
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-9
-            - g++-9
-            - libstdc++-9-dev
-            - libgcc-9-dev
-      env:
-        - CC=gcc-9
-        - CXX=g++-9
 
     - os: osx
       language: rust
