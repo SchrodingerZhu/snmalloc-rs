@@ -17,7 +17,7 @@ There are three features defined in this crate:
 - `debug`: Enable the `Debug` mode in `snmalloc`.
 - `1mib`: Use the `1mib` chunk configuration.
 - `cache-friendly`: Make the allocator more cache friendly (setting `CACHE_FRIENDLY_OFFSET` to `64` in building the library).
-- `native-cpu`: Optimize `snmalloc` for the native CPU of the host machine **default**.
+- `native-cpu`: Optimize `snmalloc` for the native CPU of the host machine. (this is not a default behavior since `0.2.14`)
 
 To use `snmalloc-rs` add it as a dependency:
 
