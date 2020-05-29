@@ -1,6 +1,6 @@
 [package]
 name = "snmalloc-sys"
-version = "0.2.13"
+version = "0.2.14"
 authors = ["schrodingerzhu <i@zhuyi.fan>"]
 edition = "2018"
 license = "MIT"
@@ -20,8 +20,10 @@ version = "0.2"
 default-features = false
 
 [features]
+default = ["native-cpu"]
 1mib = []
 debug = []
 cache-friendly = []
 android-lld = []
 android-shared-stl = []
+native-cpu = []
