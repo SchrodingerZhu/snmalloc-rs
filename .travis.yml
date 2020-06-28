@@ -83,6 +83,8 @@ matrix:
       language: rust
       rust:
         - nightly
+  allow_failures:
+    env: TOOLCHAIN=MinGW
         
 cache:
     directories:
@@ -94,7 +96,5 @@ script:
   - cargo test --all --features debug
   - cargo test --all --features cache-friendly
 
-jobs:
-  allow_failures:
-    env: TOOLCHAIN=MinGW
+
 
