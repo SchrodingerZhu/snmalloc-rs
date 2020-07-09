@@ -20,7 +20,11 @@ version = "0.2"
 default-features = false
 
 [features]
+default = ["1mib"]
 1mib = []
+16mib = []
+qemu = []
+stats = []
 debug = []
 cache-friendly = []
 android-lld = []

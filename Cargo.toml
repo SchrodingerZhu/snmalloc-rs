@@ -19,7 +19,11 @@ members = ["snmalloc-sys" ]
 snmalloc-sys = {version = "0.2.16", path = "snmalloc-sys"}
 
 [features]
+default = ["1mib"]
 1mib = ["snmalloc-sys/1mib"]
+16mib = ["snmalloc-sys/16mib"]
+qemu = ["snmalloc-sys/qemu"]
+stats = ["snmalloc-sys/stats"]
 debug = ["snmalloc-sys/debug"]
 cache-friendly = ["snmalloc-sys/cache-friendly"]
 android-lld = ["snmalloc-sys/android-lld"]
