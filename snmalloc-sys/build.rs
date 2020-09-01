@@ -1,7 +1,7 @@
 use cmake::Config;
 
 fn main() {
-    let mut cfg = &mut Config::new("snmalloc");
+    let mut cfg = &mut Config::new("snmalloc-test");
 
     let build_type = if cfg!(feature = "debug") {
         "Debug"
