@@ -1,4 +1,5 @@
 use cmake::Config;
+use std::env;
 
 fn main() {
     let mut cfg = &mut Config::new("snmalloc");
@@ -49,15 +50,19 @@ fn main() {
             cfg = cfg.define("ANDROID_ABI", "armeabi-v7a");
         }
     }
+	//I've had strange issues with config route so prefer this method
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
 
-    if cfg!(all(windows, target_env = "msvc")) {
+    if target_env == "msvc" {
         cfg = cfg.define("CMAKE_CXX_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
         cfg = cfg.define("CMAKE_C_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
-    }
-
-    if cfg!(all(windows, target_env = "gnu")) {
+    } else if target_env == "gnu" {
         cfg = cfg.define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
-    }
+        cfg = cfg.define("CMAKE_CXX_FLAGS_RELEASE", "-ffunction-sections -fdata-sections -m64 -O3 -fpic");
+        cfg = cfg.define("CMAKE_C_FLAGS_RELEASE", "-ffunction-sections -fdata-sections -m64 -O3 -fpic");
+        cfg = cfg.define("CMAKE_LINKER_FLAGS_RELEASE", "-gc-sections");
+
+    };
 
     let target = if cfg!(feature = "1mib") {
         "snmallocshim-1mib-rust"
