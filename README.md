@@ -102,9 +102,5 @@ target.
 - **upstream** Building adjust
 - non-allocation tracking functions
 
-### 0.2.24
-
-- **upstream** update to use a more efficient power of 2 check
-- fix msvc support w/ crt-static
 
 for older versions, see [CHANGELOG](CHANGELOG.md) 
