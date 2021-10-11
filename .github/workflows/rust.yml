@@ -37,3 +37,23 @@ jobs:
       run: cargo test --all --features debug
     - name: Run tests cache-friendly
       run: cargo test --all --features cache-friendly
+
+  crossbuild-mac-arm:
+    runs-on: macOS-latest
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target: aarch64-apple-darwin
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Build
+      env:
+        DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+        MACOSX_DEPLOYMENT_TARGET: '10.9'
+      run: |
+        # set SDKROOT for C dependencies
+        export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+        cargo +nightly build --verbose --target aarch64-apple-darwin
