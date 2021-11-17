@@ -39,20 +39,18 @@ fn main() {
     build.static_crt(true);
     build.cpp(true);
     build.debug(debug);
-    if cfg!(feature = "usecxx20") {
-        build.flag_if_supported("-std=c++17"); //original required if cxx20 not supported
-        build.flag_if_supported("/std:c++17");
-        build.flag_if_supported("-Wc++17-extensions");
-        build.flag_if_supported("/Wc++17-extensions");
-        build.flag_if_supported("-std=c++20");
-        build.flag_if_supported("/std:c++20");
-        build.flag_if_supported("-Wc++20-extensions");
-        build.flag_if_supported("/Wc++20-extensions");
-    } else {
+    if cfg!(feature = "usecxx17") {
         build.flag_if_supported("-std=c++17");
         build.flag_if_supported("/std:c++17");
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
+        build.flag_if_supported("-DSNMALLOC_USE_CXX17");
+
+    } else {
+        build.flag_if_supported("-std=c++20");
+        build.flag_if_supported("/std:c++20");
+        build.flag_if_supported("-Wc++20-extensions");
+        build.flag_if_supported("/Wc++20-extensions");
     }
 
     let triple = std::env::var("TARGET").unwrap();
@@ -95,12 +93,10 @@ fn main() {
         build.flag_if_supported("-DWINVER=0x0603");
     }
 
-    let target = if cfg!(feature = "1mib") {
-        "snmallocshim-1mib-rust"
-    } else if cfg!(feature = "16mib") {
-        "snmallocshim-16mib-rust"
+    let target = if cfg!(feature = "check") {
+        "snmallocshim-rust"
     } else {
-        panic!("please set a chunk configuration");
+        "snmallocshim-checks-rust"
     };
 
     if cfg!(feature = "native-cpu") {
@@ -226,20 +222,18 @@ fn main() {
         cfg = cfg.define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
     }
 
-    let target = if cfg!(feature = "1mib") {
-        "snmallocshim-1mib-rust"
-    } else if cfg!(feature = "16mib") {
-        "snmallocshim-16mib-rust"
+    let target = if cfg!(feature = "check") {
+        "snmallocshim-checks-rust"
     } else {
-        panic!("please set a chunk configuration");
+        "snmallocshim-rust"
     };
 
     if cfg!(feature = "native-cpu") {
         cfg = cfg.define("SNMALLOC_OPTIMISE_FOR_CURRENT_MACHINE", "ON")
     }
 
-    if cfg!(feature = "usecxx20") {
-        cfg = cfg.define("SNMALLOC_USE_CXX20", "ON")
+    if cfg!(feature = "usecxx17") {
+        cfg = cfg.define("SNMALLOC_USE_CXX17", "ON")
     }
 
     if cfg!(feature = "stats") {
@@ -249,11 +243,6 @@ fn main() {
     if cfg!(feature = "qemu") {
         cfg = cfg.define("SNMALLOC_QEMU_WORKAROUND", "ON")
     }
-
-    if cfg!(feature = "cache-friendly") {
-        eprintln!("cache-friendly feature flag is deprecated and no longer has any effect. \
-            it may be removed in a future release");
-    };
 
     let mut dst = cfg.build_target(target).build();
 

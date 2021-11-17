@@ -3,13 +3,6 @@
 
 use {core::ffi::c_void, core::usize};
 
-#[cfg_attr(
-feature = "cache-friendly",
-deprecated(
-since = "0.2.28",
-note = "Crate `snmalloc-sys` enables cache-friendly feature flag, \
-                which is deprecated and no longer has any effect. \
-                It may be removed in a future release"))]
 extern "C" {
     /// Allocate the memory with the given alignment and size.
     /// On success, it returns a pointer pointing to the required memory address.
