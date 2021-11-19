@@ -44,7 +44,7 @@ fn main() {
         build.flag_if_supported("/std:c++17");
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
-        build.flag_if_supported("-DSNMALLOC_USE_CXX17");
+        build.define("SNMALLOC_USE_CXX17", "1");
 
     } else {
         build.flag_if_supported("-std=c++20");
@@ -90,7 +90,7 @@ fn main() {
     }
 
     if cfg!(feature = "win8compat") {
-        build.flag_if_supported("-DWINVER=0x0603");
+        build.define("WINVER", "0x0603");
     }
 
     let target = if cfg!(feature = "check") {
