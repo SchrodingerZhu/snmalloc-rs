@@ -72,8 +72,8 @@ target.
 - `ANDROID_PLATFORM` can be passed as an optional environment variable
 - `ANDROID_ABI` used by CMake is detected automatically
 - feature `android-lld` can be used to set the linker of `snmalloc` to `lld`
-- feature `android-shared-std` can be used to set the STL library of `snmalloc` to `c++_shared` (it uses `c++_static` by
-  default)
+- ~~feature `android-shared-std` can be used to set the STL library of `snmalloc` to `c++_shared` (it uses `c++_static` by
+  default)~~ (`libstdc++` is no longer a dependency)
 
 ## Changelog
 

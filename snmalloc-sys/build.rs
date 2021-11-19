@@ -121,10 +121,6 @@ fn main() {
 
     build.compile(target);
 
-    if cfg!(feature = "android-shared-stl") {
-        println!("cargo:rustc-link-lib=dylib=c++_shared");
-    }
-
     if target_env == "msvc" {
         if cfg!(not(feature = "win8compat")) {
             println!("cargo:rustc-link-lib=dylib=mincore");
@@ -135,20 +131,7 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=atomic");
     }
 
-    if target_os == "macos" {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
-    if target_os == "openbsd" {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
-    if target_os == "freebsd" {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
     if target_os == "linux" {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=dylib=atomic");
     };
 }
@@ -286,27 +269,11 @@ fn main() {
             .for_each(|path| {
                 println!("cargo:rustc-link-search=native={}", path);
             });
-
-        println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=dylib=atomic");
         println!("cargo:rustc-link-lib=dylib=winpthread");
         println!("cargo:rustc-link-lib=dylib=gcc_s");
     }
-
-    if cfg!(target_os = "macos") {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
-    if cfg!(target_os = "openbsd") {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
-    if cfg!(target_os = "freebsd") {
-        println!("cargo:rustc-link-lib=dylib=c++");
-    }
-
     if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=dylib=atomic");
     }
 }
