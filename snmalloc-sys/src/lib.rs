@@ -3,6 +3,9 @@
 
 use {core::ffi::c_void, core::usize};
 
+/// Opaque type for snmalloc allocator
+pub enum Alloc {}
+
 extern "C" {
     /// Allocate the memory with the given alignment and size.
     /// On success, it returns a pointer pointing to the required memory address.
@@ -65,6 +68,77 @@ extern "C" {
 
     /// Return the available bytes in a memory block.
     pub fn sn_malloc_usable_size(p: *const c_void) -> usize;
+
+    /// Allocate a memory area with snmalloc internal API and return a pointer
+    /// to initialized allocator.
+    pub fn sn_rust_allocator_new() -> *mut Alloc;
+
+    /// Teardown the allocator referenced by the pointer and release the associated
+    /// memory area.
+    pub fn sn_rust_allocator_drop(alloc: *mut Alloc);
+
+    /// Allocate a memory area via a specific allocator.
+    pub fn sn_rust_allocator_allocate(
+        alloc: *mut Alloc,
+        alignment: usize,
+        size: usize,
+    ) -> *mut c_void;
+
+    /// Deallocate a memory via a specific allocator.
+    pub fn sn_rust_allocator_deallocate(
+        alloc: *mut Alloc,
+        ptr: *mut c_void,
+        alignment: usize,
+        size: usize,
+    ) -> *mut c_void;
+
+    /// Deallocate a memory via a specific allocator. The memory area will be filled with zero.
+    pub fn sn_rust_allocator_allocate_zeroed(
+        alloc: *mut Alloc,
+        alignment: usize,
+        size: usize,
+    ) -> *mut c_void;
+
+    /// Grow a memory via a specific allocator.
+    pub fn sn_rust_allocator_grow(
+        alloc: *mut Alloc,
+        ptr: *mut c_void,
+        old_alignment: usize,
+        old_size: usize,
+        new_alignment: usize,
+        new_size: usize,
+    ) -> *mut c_void;
+
+    /// Grow a memory via a specific allocator. The extra memory area will be filled with zero.
+    pub fn sn_rust_allocator_grow_zeroed(
+        alloc: *mut Alloc,
+        ptr: *mut c_void,
+        old_alignment: usize,
+        old_size: usize,
+        new_alignment: usize,
+        new_size: usize,
+    ) -> *mut c_void;
+
+    /// Shrink a memory via a specific allocator.
+    pub fn sn_rust_allocator_shrink(
+        alloc: *mut Alloc,
+        ptr: *mut c_void,
+        old_alignment: usize,
+        old_size: usize,
+        new_alignment: usize,
+        new_size: usize,
+    ) -> *mut c_void;
+
+    /// Check whether we can do realloc inplace.
+    pub fn sn_rust_fit_inplace(
+        old_alignment: usize,
+        old_size: usize,
+        new_alignment: usize,
+        new_size: usize,
+    ) -> bool;
+
+    pub fn sn_rust_round_size(alignment: usize, size: usize) -> usize;
+
 }
 
 #[cfg(test)]
@@ -123,5 +197,54 @@ mod tests {
             usable_size >= 32,
             "usable_size should at least equal to the allocated size"
         );
+    }
+
+    #[test]
+    fn it_creates_and_drops_allocator() {
+        unsafe {
+            let alloc = sn_rust_allocator_new();
+            assert!(!alloc.is_null());
+            sn_rust_allocator_drop(alloc);
+        }
+    }
+
+    #[test]
+    fn allocator_allocs_and_deallocs_memory() {
+        unsafe {
+            let alloc = sn_rust_allocator_new();
+            let ptr = sn_rust_allocator_allocate(alloc, 8, 8) as *mut u8;
+            *ptr = 127;
+            assert_eq!(*ptr, 127);
+            sn_rust_allocator_deallocate(alloc, ptr as *mut c_void, 8, 8);
+            sn_rust_allocator_drop(alloc);
+        }
+    }
+
+    #[test]
+    fn allocator_grows_memory() {
+        unsafe {
+            let alloc = sn_rust_allocator_new();
+            let ptr = sn_rust_allocator_allocate_zeroed(alloc, 8, 8);
+            *(ptr as *mut u8) = 127;
+            let ptr = sn_rust_allocator_grow_zeroed(alloc, ptr, 8, 8, 8, 16384) as *mut u8;
+            assert_eq!(*ptr, 127);
+            let slice = core::slice::from_raw_parts_mut(ptr.add(1), 16384 - 1);
+            assert!(slice.iter().all(|x| *x == 0u8));
+            sn_rust_allocator_deallocate(alloc, ptr as *mut c_void, 8, 16384);
+            sn_rust_allocator_drop(alloc);
+        }
+    }
+
+    #[test]
+    fn it_checks_fit_inplace() {
+        unsafe {
+            for align in [1usize, 2, 4, 8, 16, 64, 512] {
+                for size in [1usize, 23, 99, 100, 512, 1024, 3333, 8192, 8193] {
+                    let round_size = sn_rust_round_size(align, size);
+                    assert!(sn_rust_fit_inplace(align, size, align, round_size));
+                    assert!(!sn_rust_fit_inplace(align, size, align, round_size + 1));
+                }
+            }
+        }
     }
 }

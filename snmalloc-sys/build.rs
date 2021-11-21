@@ -45,7 +45,6 @@ fn main() {
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
         build.define("SNMALLOC_USE_CXX17", "1");
-
     } else {
         build.flag_if_supported("-std=c++20");
         build.flag_if_supported("/std:c++20");
@@ -113,8 +112,10 @@ fn main() {
     }
 
     if cfg!(feature = "cache-friendly") {
-        eprintln!("cache-friendly feature flag is deprecated and no longer has any effect. \
-            it may be removed in a future release");
+        eprintln!(
+            "cache-friendly feature flag is deprecated and no longer has any effect. \
+            it may be removed in a future release"
+        );
         // The following code no longer works
         // build.define("CACHE_FRIENDLY_OFFSET", "64");
     }
