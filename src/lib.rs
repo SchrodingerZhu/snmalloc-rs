@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(allocator_api)]
 //! `snmalloc-rs` provides a wrapper for [`microsoft/snmalloc`](https://github.com/microsoft/snmalloc) to make it usable as a global allocator for rust.
 //! snmalloc is a research allocator. Its key design features are:
 //! - Memory that is freed by the same thread that allocated it does not require any synchronising operations.
@@ -27,7 +28,8 @@
 //! ```
 extern crate snmalloc_sys as ffi;
 
-use core::alloc::{GlobalAlloc, Layout};
+use core::alloc::{AllocError, Allocator, GlobalAlloc, Layout};
+use core::ptr::{slice_from_raw_parts_mut, NonNull};
 
 pub struct SnMalloc;
 
@@ -75,10 +77,122 @@ unsafe impl GlobalAlloc for SnMalloc {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SnAllocator {
+    alloc: *mut ffi::Alloc,
+}
+
+impl SnAllocator {
+    pub fn new() -> Self {
+        unsafe {
+            SnAllocator {
+                alloc: ffi::sn_rust_allocator_new(),
+            }
+        }
+    }
+}
+
+impl Drop for SnAllocator {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::sn_rust_allocator_drop(self.alloc);
+        }
+    }
+}
+
+unsafe fn construct_alloc_result(
+    ptr: *mut core::ffi::c_void,
+    layout: &Layout,
+) -> Result<NonNull<[u8]>, AllocError> {
+    if ptr.is_null() {
+        Err(AllocError)
+    } else {
+        let fat_ptr = slice_from_raw_parts_mut(ptr as *mut u8, layout.size());
+        Ok(NonNull::from(&*fat_ptr))
+    }
+}
+
+unsafe impl Allocator for SnAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        unsafe {
+            let ptr = ffi::sn_rust_allocator_allocate(self.alloc, layout.align(), layout.size());
+            construct_alloc_result(ptr, &layout)
+        }
+    }
+
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        unsafe {
+            let ptr =
+                ffi::sn_rust_allocator_allocate_zeroed(self.alloc, layout.align(), layout.size());
+            construct_alloc_result(ptr, &layout)
+        }
+    }
+
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        ffi::sn_rust_allocator_deallocate(
+            self.alloc,
+            ptr.as_ptr() as _,
+            layout.align(),
+            layout.size(),
+        );
+    }
+
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let new_ptr = ffi::sn_rust_allocator_grow(
+            self.alloc,
+            ptr.as_ptr() as _,
+            old_layout.align(),
+            old_layout.size(),
+            new_layout.align(),
+            new_layout.size(),
+        );
+        construct_alloc_result(new_ptr, &new_layout)
+    }
+
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let new_ptr = ffi::sn_rust_allocator_grow_zeroed(
+            self.alloc,
+            ptr.as_ptr() as _,
+            old_layout.align(),
+            old_layout.size(),
+            new_layout.align(),
+            new_layout.size(),
+        );
+        construct_alloc_result(new_ptr, &new_layout)
+    }
+
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let new_ptr = ffi::sn_rust_allocator_shrink(
+            self.alloc,
+            ptr.as_ptr() as _,
+            old_layout.align(),
+            old_layout.size(),
+            new_layout.align(),
+            new_layout.size(),
+        );
+        construct_alloc_result(new_ptr, &new_layout)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    extern crate std;
     use super::*;
-
     #[test]
     fn it_frees_allocated_memory() {
         unsafe {
@@ -111,5 +225,20 @@ mod tests {
             let ptr = alloc.realloc(ptr, layout, 16);
             alloc.dealloc(ptr, layout);
         }
+    }
+
+    #[test]
+    fn allocator_supports_vector() {
+        let allocator = SnAllocator::new();
+        let mut vec = std::vec::Vec::new_in(allocator);
+        let mut sum: usize = 0;
+        for i in 1..512usize {
+            vec.push(i);
+            sum += i * i;
+        }
+
+        let res = vec.into_iter().flat_map(|x| [x].repeat(x)).sum();
+
+        assert_eq!(sum, res);
     }
 }
