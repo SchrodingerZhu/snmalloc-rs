@@ -77,7 +77,7 @@ unsafe impl GlobalAlloc for SnMalloc {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SnAllocator {
     alloc: *mut ffi::Alloc,
 }
@@ -230,14 +230,20 @@ mod tests {
     #[test]
     fn allocator_supports_vector() {
         let allocator = SnAllocator::new();
-        let mut vec = std::vec::Vec::new_in(allocator);
+        let mut vec = std::vec::Vec::new_in(&allocator);
         let mut sum: usize = 0;
         for i in 1..512usize {
             vec.push(i);
             sum += i * i;
         }
 
-        let res = vec.into_iter().flat_map(|x| [x].repeat(x)).sum();
+        let res = vec.into_iter().flat_map(|x| {
+            let mut v = std::vec::Vec::new_in(&allocator);
+            for _ in 0..x {
+                v.push(x);
+            }
+            v
+        }).sum();
 
         assert_eq!(sum, res);
     }
