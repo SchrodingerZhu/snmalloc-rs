@@ -143,7 +143,7 @@ fn main() {
     } else {
         // link c++ runtime
         println!("cargo:rustc-link-lib={}",
-                 std::env::var("CXXSTDLIB").unwrap_or_else(|| {
+                 std::env::var("CXXSTDLIB").unwrap_or_else(|_| {
                      if cfg!(target_os = "macos") || cfg!(target_os = "openbsd") {
                          "c++".to_string()
                      } else {
@@ -305,7 +305,7 @@ fn main() {
     } else {
         // link c++ runtime
         println!("cargo:rustc-link-lib={}",
-                 std::env::var("CXXSTDLIB").unwrap_or_else(|| {
+                 std::env::var("CXXSTDLIB").unwrap_or_else(|_| {
                      if cfg!(target_os = "macos") || cfg!(target_os = "openbsd") {
                          "c++".to_string()
                      } else {
