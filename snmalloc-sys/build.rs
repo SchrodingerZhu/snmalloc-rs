@@ -263,7 +263,7 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", dst.display());
     }
 
-    if cfg!(target_env = "gnu") {
+    if cfg!(all(windows, target_env = "gnu")) {
         let stdout = std::process::Command::new("gcc")
             .args(&["-print-search-dirs"])
             .output()
@@ -286,6 +286,9 @@ fn main() {
             .for_each(|path| {
                 println!("cargo:rustc-link-search=native={}", path);
             });
+        println!("cargo:rustc-link-lib=dylib=atomic");
+        println!("cargo:rustc-link-lib=dylib=winpthread");
+        println!("cargo:rustc-link-lib=dylib=gcc_s");
     }
 
     // linux: using PTHREAD_DESTRUCTORS
@@ -296,9 +299,7 @@ fn main() {
     if cfg!(target_os = "freebsd") {
         // using THREAD_DESTRUCTOR
     } else if cfg!(all(unix, not(target_os = "macos"))) {
-        if cfg!(target_env = "gnu") {
-            println!("cargo:rustc-link-lib=static=c_nonshared");
-        }
+        // using PTHREAD_DESTRUCTOR
     } else if cfg!(windows) {
         // not need for explicit c++ runtime
     } else {
