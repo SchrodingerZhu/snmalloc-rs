@@ -263,7 +263,7 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", dst.display());
     }
 
-    if cfg!(all(windows, target_env = "gnu")) {
+    if cfg!(target_env = "gnu") {
         let stdout = std::process::Command::new("gcc")
             .args(&["-print-search-dirs"])
             .output()
@@ -286,9 +286,6 @@ fn main() {
             .for_each(|path| {
                 println!("cargo:rustc-link-search=native={}", path);
             });
-        println!("cargo:rustc-link-lib=dylib=atomic");
-        println!("cargo:rustc-link-lib=dylib=winpthread");
-        println!("cargo:rustc-link-lib=dylib=gcc_s");
     }
 
     // linux: using PTHREAD_DESTRUCTORS
