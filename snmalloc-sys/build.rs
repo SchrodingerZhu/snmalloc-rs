@@ -42,11 +42,6 @@ fn main() {
     if cfg!(feature = "usecxx17") {
         build.flag_if_supported("-std=c++17");
         build.flag_if_supported("/std:c++17");
-        if cfg!(unix) {
-            if build.is_flag_supported("-std=c++17").unwrap() != true {
-                panic!("c++17 not supported");
-            }
-        }
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
         build.define("SNMALLOC_USE_CXX17", "1");
