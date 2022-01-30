@@ -299,9 +299,7 @@ fn main() {
     if cfg!(target_os = "freebsd") {
         // using THREAD_DESTRUCTOR
     } else if cfg!(all(unix, not(target_os = "macos"))) {
-        if cfg!(target_env = "gnu") {
-            println!("cargo:rustc-link-lib=static=c_nonshared");
-        }
+        // using PTHREAD_DESTRUCTOR
     } else if cfg!(windows) {
         // not need for explicit c++ runtime
     } else {
