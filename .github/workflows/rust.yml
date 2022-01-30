@@ -38,6 +38,7 @@ jobs:
     - name: Run tests
       run: |
         ls /usr/lib/x86_64-linux-gnu/ | grep libc
+        cat /usr/lib/x86_64-linux-gnu/libc.so
         cargo test --all
     - name: Run tests build_cc usecxx17
       run: cargo test --all --features build_cc usecxx17
