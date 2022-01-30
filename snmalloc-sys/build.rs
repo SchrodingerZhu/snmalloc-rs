@@ -45,7 +45,6 @@ fn main() {
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
         build.define("SNMALLOC_USE_CXX17", "1");
-
     } else {
         build.flag_if_supported("-std=c++20");
         build.flag_if_supported("/std:c++20");
@@ -134,6 +133,18 @@ fn main() {
     if target_os == "linux" {
         println!("cargo:rustc-link-lib=dylib=atomic");
     };
+
+    if cfg!(target_os = "freebsd") {
+        // using THREAD_DESTRUCTOR
+    } else if cfg!(all(unix, not(target_os = "macos"))) {
+        // using PTHREAD_DESTRUCTOR
+    } else if cfg!(windows) {
+        // not need for explicit c++ runtime
+    } else {
+        // link c++ runtime
+        println!("cargo:rustc-link-lib={}",
+                 std::env::var("CXXSTDLIB").unwrap_or("stdc++".to_string()))
+    }
 }
 
 #[cfg(not(feature = "build_cc"))]
@@ -273,7 +284,21 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=winpthread");
         println!("cargo:rustc-link-lib=dylib=gcc_s");
     }
+
+    // linux: using PTHREAD_DESTRUCTORS
     if cfg!(target_os = "linux") {
         println!("cargo:rustc-link-lib=dylib=atomic");
+    }
+
+    if cfg!(target_os = "freebsd") {
+        // using THREAD_DESTRUCTOR
+    } else if cfg!(all(unix, not(target_os = "macos"))) {
+        // using PTHREAD_DESTRUCTOR
+    } else if cfg!(windows) {
+        // not need for explicit c++ runtime
+    } else {
+        // link c++ runtime
+        println!("cargo:rustc-link-lib={}",
+                 std::env::var("CXXSTDLIB").unwrap_or("stdc++".to_string()))
     }
 }
