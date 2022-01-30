@@ -29,6 +29,8 @@ jobs:
       run: |
         if bash -c 'uname -s | grep 'Linux' >/dev/null'; then
           sudo apt-get update -y && sudo apt-get --reinstall install -y libc6-dev
+          ls /usr/lib
+          find /usr/lib | grep libc.so
         fi
       shell: bash
     - name: Build
