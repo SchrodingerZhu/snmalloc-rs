@@ -42,6 +42,11 @@ fn main() {
     if cfg!(feature = "usecxx17") {
         build.flag_if_supported("-std=c++17");
         build.flag_if_supported("/std:c++17");
+        if cfg!(unix) {
+            if build.is_flag_supported("-std=c++17").unwrap() != true {
+                panic!("c++17 not supported");
+            }
+        }
         build.flag_if_supported("-Wc++17-extensions");
         build.flag_if_supported("/Wc++17-extensions");
         build.define("SNMALLOC_USE_CXX17", "1");
@@ -137,9 +142,11 @@ fn main() {
     if cfg!(target_os = "freebsd") {
         // using THREAD_DESTRUCTOR
     } else if cfg!(all(unix, not(target_os = "macos"))) {
-        // using PTHREAD_DESTRUCTOR
+        if cfg!(target_env = "gnu") {
+            println!("cargo:rustc-link-lib=c_nonshared");
+        }
     } else if cfg!(windows) {
-        // not need for explicit c++ runtime
+        // no need
     } else {
         // link c++ runtime
         println!("cargo:rustc-link-lib={}",
