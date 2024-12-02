@@ -129,7 +129,10 @@ fn configure_linking() {
         println!("cargo:rustc-link-lib=dylib=mincore");
     }
     if target_os == "windows" && target_env == "gnu" {
-        println!("cargo:rustc-link-lib=dylib=atomic");
+        println!("cargo:rustc-link-lib=dylib=bcrypt");
+        if !std::env::var("MSYSTEM").map_or(false, |s| s.contains("CLANG")) {
+            println!("cargo:rustc-link-lib=dylib=atomic");
+        }
     }
     if target_os == "linux" {
         println!("cargo:rustc-link-lib=dylib=atomic");
@@ -147,6 +150,9 @@ fn configure_linking() {
         println!("cargo:rustc-link-lib={}", cxxlib);
     }
 }
+#[cfg(not(feature = "build_cc"))]
+use cmake::Config;
+
 #[cfg(not(feature = "build_cc"))]
 fn main() {
     // Clean build directory if exists
@@ -251,9 +257,17 @@ fn main() {
     } else {
         println!("cargo:rustc-link-search=native={}", dst.display());
         if cfg!(all(windows, target_env = "gnu")) {
-            ["bcrypt", "atomic", "winpthread", "gcc_s"]
-                .iter()
-                .for_each(|lib| println!("cargo:rustc-link-lib=dylib={}", lib));
+            let base_libs = ["bcrypt", "winpthread", "stdc++"];
+            for lib in base_libs {
+                println!("cargo:rustc-link-lib=dylib={}", lib);
+            }
+            
+            if !std::env::var("MSYSTEM").map_or(false, |s| s.contains("CLANG")) {
+                let gnu_libs = ["atomic", "gcc_s"];
+                for lib in gnu_libs {
+                    println!("cargo:rustc-link-lib=dylib={}", lib);
+                }
+            }
         }
         if cfg!(target_os = "linux") {
             println!("cargo:rustc-link-lib=dylib=atomic");
