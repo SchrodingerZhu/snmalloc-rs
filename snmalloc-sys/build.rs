@@ -1,233 +1,233 @@
 #[cfg(feature = "build_cc")]
 fn main() {
-    let (debug, optim_unix, optim_msvc, prof_msvc_hint) = if cfg!(feature = "debug") {
-        (true, "-O0", "/O0", "/DEBUG")
+    let (debug, optim_level) = if cfg!(feature = "debug") {
+        (true, "-O0")
     } else {
-        (false, "-O3", "/O2", "/RELEASE")
+        (false, "-O3")
     };
+
     let mut build = cc::Build::new();
-    build.include("snmalloc/src");
-    build.file("snmalloc/src/snmalloc/override/rust.cc".to_string());
-    build.flag_if_supported("/O2");
-    build.flag_if_supported("/Zi");
-    build.flag_if_supported("/nologo");
-    build.flag_if_supported("/W4");
-    build.flag_if_supported("/WX");
-    build.flag_if_supported("/wd4127");
-    build.flag_if_supported("/wd4324");
-    build.flag_if_supported("/wd4201");
-    build.flag_if_supported("/Ob2");
-    build.flag_if_supported("/DNDEBUG");
-    build.flag_if_supported("/EHsc");
-    build.flag_if_supported("/Gd");
-    build.flag_if_supported("/TP");
-    build.flag_if_supported("/Gm-");
-    build.flag_if_supported("/GS");
-    build.flag_if_supported("/fp:precise");
-    build.flag_if_supported("/Zc:wchar_t");
-    build.flag_if_supported("/Zc:forScope");
-    build.flag_if_supported("/Zc:inline");
-    build.flag_if_supported(prof_msvc_hint);
-    build.flag_if_supported(optim_msvc);
-    build.flag_if_supported(optim_unix);
-    build.flag_if_supported("-mcx16");
-    build.flag_if_supported("-fno-exceptions");
-    build.flag_if_supported("-fno-rtti");
-    build.flag_if_supported("-g");
-    build.flag_if_supported("-fomit-frame-pointer");
-    build.flag_if_supported("-fpermissive");
-    build.static_crt(true);
-    build.cpp(true);
-    build.debug(debug);
-    if cfg!(feature = "usecxx17") {
-        build.flag_if_supported("-std=c++17");
-        build.flag_if_supported("/std:c++17");
-        build.flag_if_supported("-Wc++17-extensions");
-        build.flag_if_supported("/Wc++17-extensions");
-    } else {
-        build.flag_if_supported("-std=c++20");
-        build.flag_if_supported("/std:c++20");
-        build.flag_if_supported("-Wc++20-extensions");
-        build.flag_if_supported("/Wc++20-extensions");
-    }
+    build.include("snmalloc/src")
+        .file("snmalloc/src/snmalloc/override/rust.cc")
+        .cpp(true)
+        .debug(debug);
 
-    let triple = std::env::var("TARGET").unwrap();
-    let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("target_os not defined!");
-    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").expect("target_env not defined!");
-    let target_family = std::env::var("CARGO_CFG_TARGET_FAMILY").expect("target family not set");
-
-    if triple.contains("android") {
-        if cfg!(feature = "android-lld") {
-            build.define("ANDROID_LD", "lld");
-        }
-        if triple.contains("aarch64") {
-            build.define("ANDROID_ABI", "arm64-v8a");
-        } else if triple.contains("armv7") {
-            build.define("ANDROID_ABI", "armeabi-v7a");
-            build.define("ANDROID_ARM_MODE", "arm");
-        } else if triple.contains("x86_64") {
-            build.define("ANDROID_ABI", "x86_64");
-        } else if triple.contains("i686") {
-            build.define("ANDROID_ABI", "x86");
-        } else if triple.contains("neon") {
-            build.define("ANDROID_ABI", "armeabi-v7a with NEON");
-        } else if triple.contains("arm") {
-            build.define("ANDROID_ABI", "armeabi-v7a");
-        }
-    }
-
-    if target_family == "unix" || target_env == "gnu" && target_os != "haiku" {
-        if cfg!(feature = "local_dynamic_tls") {
-            build.flag_if_supported("-ftls-model=local-dynamic");
-        } else {
-            build.flag_if_supported("-ftls-model=initial-exec");
-        }
-    }
-
-    if cfg!(feature = "win8compat") {
-        build.define("WINVER", "0x0603");
-    }
+    configure_compiler(&mut build, optim_level);
+    configure_features(&mut build);
 
     let target = if cfg!(feature = "check") {
         "snmallocshim-rust"
     } else {
         "snmallocshim-checks-rust"
     };
-
-    if cfg!(feature = "native-cpu") {
-        build.define("SNMALLOC_OPTIMISE_FOR_CURRENT_MACHINE", "ON");
-        build.flag_if_supported("-march=native");
-    }
-
-    if cfg!(feature = "qemu") {
-        build.define("SNMALLOC_QEMU_WORKAROUND", "ON");
-    }
-
-    if cfg!(feature = "cache-friendly") {
-        eprintln!(
-            "cache-friendly feature flag is deprecated and no longer has any effect. \
-            it may be removed in a future release"
-        );
-        // The following code no longer works
-        // build.define("CACHE_FRIENDLY_OFFSET", "64");
-    }
-
-    if cfg!(feature = "lto") {
-        build.define("SNMALLOC_IPO", "ON");
-    }
-
-    if cfg!(feature = "notls") {
-        build.define("SNMALLOC_ENABLE_DYNAMIC_LOADING", "ON");
-    }
-
-    if cfg!(feature = "usewait-on-address") {
-        build.define("SNMALLOC_USE_WAIT_ON_ADDRESS", "1");
-    } else {
-        build.define("SNMALLOC_USE_WAIT_ON_ADDRESS", "0");
-    }
-
+    
     build.compile(target);
+    configure_linking();
+}
+
+#[cfg(feature = "build_cc")]
+fn configure_compiler(build: &mut cc::Build, optim_level: &str) {
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("target_os not defined!");
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").expect("target_env not defined!");
+    let target_family = std::env::var("CARGO_CFG_TARGET_FAMILY").expect("target family not set");
+
+    if target_os == "windows" {
+        configure_windows_build(build);
+    }
+
+    build.flag_if_supported(optim_level)
+        .flag_if_supported("-fomit-frame-pointer");
 
     if target_env == "msvc" {
-        if cfg!(not(feature = "win8compat")) {
-            println!("cargo:rustc-link-lib=dylib=mincore");
-        }
+        configure_msvc_build(build);
     }
 
-    if target_os == "windows" && target_env == "gnu" {
-        println!("cargo:rustc-link-lib=dylib=atomic");
-    }
-
-    if target_os == "linux" {
-        println!("cargo:rustc-link-lib=dylib=atomic");
-    };
-
-    if cfg!(target_os = "freebsd") {
-        // using THREAD_DESTRUCTOR
-    } else if cfg!(all(unix, not(target_os = "macos"))) {
-        if cfg!(target_env = "gnu") {
-            println!("cargo:rustc-link-lib=c_nonshared");
-        }
-    } else if cfg!(windows) {
-        // no need
+    // C++ Standard selection
+    let cpp_std = if cfg!(feature = "usecxx17") {
+        ["-std=c++17", "/std:c++17"]
     } else {
-        // link c++ runtime
-        println!(
-            "cargo:rustc-link-lib={}",
-            std::env::var("CXXSTDLIB").unwrap_or_else(|_| {
-                if cfg!(target_os = "macos") || cfg!(target_os = "openbsd") {
-                    "c++".to_string()
-                } else {
-                    "stdc++".to_string()
-                }
-            })
-        )
+        ["-std=c++20", "/std:c++20"]
+    };
+    cpp_std.iter().for_each(|std| { build.flag_if_supported(std); });
+
+    // Unix-specific TLS model
+    if (target_family == "unix" || target_env == "gnu") && target_os != "haiku" {
+        let tls_model = if cfg!(feature = "local_dynamic_tls") {
+            "-ftls-model=local-dynamic"
+        } else {
+            "-ftls-model=initial-exec"
+        };
+        build.flag_if_supported(tls_model);
     }
 }
 
+#[cfg(feature = "build_cc")]
+fn configure_windows_build(build: &mut cc::Build) {
+    if let Ok(msystem) = std::env::var("MSYSTEM") {
+        match msystem.as_str() {
+            "CLANG64" | "CLANGARM64" => {
+                build.flag_if_supported("-flto")
+                    .flag_if_supported("-fuse-ld=lld")
+                    .flag_if_supported("-stdlib=libc++")
+                    .flag_if_supported("-Wno-error=unknown-pragmas")
+                    .flag_if_supported("-Qunused-arguments");
+            }
+            "UCRT64" => {
+                build.flag_if_supported("-flto")
+                    .flag_if_supported("-fuse-ld=lld")
+                    .flag_if_supported("-Wno-error=unknown-pragmas");
+            }
+            _ => {}
+        }
+    }
+
+    build.flag_if_supported("-mcx16")
+        .flag_if_supported("-fno-exceptions")
+        .flag_if_supported("-fno-rtti");
+}
+
+#[cfg(feature = "build_cc")]
+fn configure_msvc_build(build: &mut cc::Build) {
+    let msvc_flags = [
+        "/nologo", "/W4", "/WX", "/wd4127", "/wd4324", "/wd4201",
+        "/Ob2", "/DNDEBUG", "/EHsc", "/Gd", "/TP", "/Gm-", "/GS",
+        "/fp:precise", "/Zc:wchar_t", "/Zc:forScope", "/Zc:inline"
+    ];
+    msvc_flags.iter().for_each(|flag| { build.flag_if_supported(flag); });
+}
+
+#[cfg(feature = "build_cc")]
+fn configure_features(build: &mut cc::Build) {
+    if cfg!(feature = "native-cpu") {
+        build.define("SNMALLOC_OPTIMISE_FOR_CURRENT_MACHINE", "ON")
+            .flag_if_supported("-march=native");
+    }
+    if cfg!(feature = "qemu") {
+        build.define("SNMALLOC_QEMU_WORKAROUND", "ON");
+    }
+    if cfg!(feature = "lto") {
+        build.define("SNMALLOC_IPO", "ON");
+    }
+    if cfg!(feature = "notls") {
+        build.define("SNMALLOC_ENABLE_DYNAMIC_LOADING", "ON");
+    }
+    if cfg!(feature = "win8compat") {
+        build.define("WINVER", "0x0603");
+    }
+    build.define(
+        "SNMALLOC_USE_WAIT_ON_ADDRESS",
+        if cfg!(feature = "usewait-on-address") { "1" } else { "0" }
+    );
+}
+
+#[cfg(feature = "build_cc")]
+fn configure_linking() {
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("target_os not defined!");
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").expect("target_env not defined!");
+
+    if target_env == "msvc" && !cfg!(feature = "win8compat") {
+        println!("cargo:rustc-link-lib=dylib=mincore");
+    }
+    if target_os == "windows" && target_env == "gnu" {
+        println!("cargo:rustc-link-lib=dylib=atomic");
+    }
+    if target_os == "linux" {
+        println!("cargo:rustc-link-lib=dylib=atomic");
+    }
+    if !cfg!(target_os = "freebsd") && cfg!(all(unix, not(target_os = "macos"))) {
+        if cfg!(target_env = "gnu") {
+            println!("cargo:rustc-link-lib=c_nonshared");
+        }
+    } else if !cfg!(windows) {
+        let cxxlib = if cfg!(any(target_os = "macos", target_os = "openbsd")) {
+            "c++"
+        } else {
+            "stdc++"
+        };
+        println!("cargo:rustc-link-lib={}", cxxlib);
+    }
+}
 #[cfg(not(feature = "build_cc"))]
 fn main() {
-    let mut cfg = &mut cmake::Config::new("snmalloc");
+    // Clean build directory if exists
+    if let Ok(metadata) = std::fs::metadata("build") {
+        if metadata.is_dir() {
+            let _ = std::fs::remove_dir_all("build");
+        }
+    }
 
+    let mut config = cmake::Config::new("snmalloc");
     let build_type = if cfg!(feature = "debug") {
         "Debug"
     } else {
         "Release"
     };
 
-    cfg = cfg
+    // Basic configuration
+    config
         .define("SNMALLOC_RUST_SUPPORT", "ON")
         .profile(build_type)
-        .very_verbose(true);
+        .generator("Ninja")
+        .very_verbose(true)
+        .define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
 
-    let triple = std::env::var("TARGET").unwrap();
+    // MSYS2 specific configuration
+    if let Ok(msystem) = std::env::var("MSYSTEM") {
+        match msystem.as_str() {
+            "CLANG64" | "CLANGARM64" => {
+                config.define("CMAKE_CXX_COMPILER", "clang++")
+                      .define("CMAKE_C_COMPILER", "clang")
+                      .define("CMAKE_CXX_FLAGS", 
+                          "-fuse-ld=lld -stdlib=libc++ -mcx16 -Wno-error=unknown-pragmas -Qunused-arguments")
+                      .define("CMAKE_C_FLAGS",
+                          "-fuse-ld=lld -Wno-error=unknown-pragmas -Qunused-arguments")
+                      .define("CMAKE_EXE_LINKER_FLAGS",
+                          "-fuse-ld=lld -stdlib=libc++");
+            }
+            "UCRT64" => {
+                config
+                    .define("CMAKE_CXX_FLAGS", "-fuse-ld=lld -Wno-error=unknown-pragmas")
+                    .define("CMAKE_SYSTEM_NAME", "Windows")
+                    .define("CMAKE_C_FLAGS", "-fuse-ld=lld -Wno-error=unknown-pragmas");
+            }
+            _ => {}
+        }
+    }
+
+    let triple = std::env::var("TARGET").expect("TARGET not set");
     if triple.contains("android") {
-        if let Ok(ndk) = std::env::var("ANDROID_NDK") {
-            cfg = cfg.define(
-                "CMAKE_TOOLCHAIN_FILE",
-                format!("{}/build/cmake/android.toolchain.cmake", ndk),
-            );
-        } else {
-            eprintln!("please set ANDROID_NDK environment variable");
-            std::process::abort();
-        }
-
-        if let Ok(platform) = std::env::var("ANDROID_PLATFORM") {
-            cfg = cfg.define("ANDROID_PLATFORM", platform);
-        }
-
-        if cfg!(feature = "android-lld") {
-            cfg = cfg.define("ANDROID_LD", "lld");
-        }
-
-        if triple.contains("aarch64") {
-            cfg = cfg.define("ANDROID_ABI", "arm64-v8a");
-        } else if triple.contains("armv7") {
-            cfg = cfg
-                .define("ANDROID_ABI", "armeabi-v7a")
-                .define("ANDROID_ARM_MODE", "arm");
-        } else if triple.contains("x86_64") {
-            cfg = cfg.define("ANDROID_ABI", "x86_64");
-        } else if triple.contains("i686") {
-            cfg = cfg.define("ANDROID_ABI", "x86");
-        } else if triple.contains("neon") {
-            cfg = cfg.define("ANDROID_ABI", "armeabi-v7a with NEON")
-        } else if triple.contains("arm") {
-            cfg = cfg.define("ANDROID_ABI", "armeabi-v7a");
-        }
+        configure_android(&mut config, &triple);
     }
 
     if cfg!(all(windows, target_env = "msvc")) {
-        cfg = cfg.define("CMAKE_CXX_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
-        cfg = cfg.define("CMAKE_C_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
+        config
+            .define("CMAKE_CXX_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc")
+            .define("CMAKE_C_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
         if cfg!(feature = "win8compat") {
-            cfg = cfg.define("WIN8COMPAT", "ON")
+            config.define("WIN8COMPAT", "ON");
         }
     }
 
-    if cfg!(all(windows, target_env = "gnu")) {
-        cfg = cfg.define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
+    if cfg!(feature = "native-cpu") {
+        config.define("SNMALLOC_OPTIMISE_FOR_CURRENT_MACHINE", "ON");
     }
+    if cfg!(feature = "usecxx17") {
+        config.define("SNMALLOC_USE_CXX17", "ON");
+    }
+    if cfg!(feature = "stats") {
+        config.define("USE_SNMALLOC_STATS", "ON");
+    }
+    if cfg!(feature = "qemu") {
+        config.define("SNMALLOC_QEMU_WORKAROUND", "ON");
+    }
+    config.define(
+        "SNMALLOC_USE_WAIT_ON_ADDRESS",
+        if cfg!(feature = "usewait-on-address") {
+            "1"
+        } else {
+            "0"
+        },
+    );
 
     let target = if cfg!(feature = "check") {
         "snmallocshim-checks-rust"
@@ -235,37 +235,12 @@ fn main() {
         "snmallocshim-rust"
     };
 
-    if cfg!(feature = "native-cpu") {
-        cfg = cfg.define("SNMALLOC_OPTIMISE_FOR_CURRENT_MACHINE", "ON")
-    }
+    let mut dst = config.build_target(target).build();
+    dst.push("build");
 
-    if cfg!(feature = "usecxx17") {
-        cfg = cfg.define("SNMALLOC_USE_CXX17", "ON")
-    }
-
-    if cfg!(feature = "stats") {
-        cfg = cfg.define("USE_SNMALLOC_STATS", "ON")
-    }
-
-    if cfg!(feature = "qemu") {
-        cfg = cfg.define("SNMALLOC_QEMU_WORKAROUND", "ON")
-    }
-
-    if cfg!(feature = "usewait-on-address") {
-        cfg = cfg.define("SNMALLOC_USE_WAIT_ON_ADDRESS", "1")
-    } else {
-        cfg = cfg.define("SNMALLOC_USE_WAIT_ON_ADDRESS", "0")
-    }
-
-    let mut dst = cfg.build_target(target).build();
-
-    dst.push("./build");
-    // we need to specify static modifier, otherwise the linker may not be smart enough to resolve
-    // dependency from snmalloc to libc/libgcc_s
     println!("cargo:rustc-link-lib=static={}", target);
-
     if cfg!(all(windows, target_env = "msvc")) {
-        if cfg!(not(feature = "win8compat")) {
+        if !cfg!(feature = "win8compat") {
             println!("cargo:rustc-link-lib=dylib=mincore");
         }
         println!(
@@ -275,61 +250,56 @@ fn main() {
         );
     } else {
         println!("cargo:rustc-link-search=native={}", dst.display());
-    }
-
-    if cfg!(all(windows, target_env = "gnu")) {
-        let stdout = std::process::Command::new("gcc")
-            .args(["-print-search-dirs"])
-            .output()
-            .unwrap_or_else(|_| {
-                eprintln!("Cannot run gcc.exe");
-                std::process::abort();
-            })
-            .stdout;
-
-        let outputs = String::from_utf8(stdout).unwrap_or_else(|_| {
-            eprintln!("gcc output contains non-utf8 characters");
-            std::process::abort();
-        });
-
-        outputs
-            .lines()
-            .filter(|line| line.starts_with("libraries: ="))
-            .map(|line| line.split_at("libraries: =".len()).1)
-            .flat_map(|line| line.split(';'))
-            .for_each(|path| {
-                println!("cargo:rustc-link-search=native={}", path);
-            });
-        println!("cargo:rustc-link-lib=dylib=atomic");
-        println!("cargo:rustc-link-lib=dylib=winpthread");
-        println!("cargo:rustc-link-lib=dylib=gcc_s");
-    }
-
-    // linux: using PTHREAD_DESTRUCTORS
-    if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=dylib=atomic");
-    }
-
-    if cfg!(target_os = "freebsd") {
-        // using THREAD_DESTRUCTOR
-    } else if cfg!(all(unix, not(target_os = "macos"))) {
-        // using PTHREAD_DESTRUCTOR
-        if cfg!(target_env = "gnu") {
-            println!("cargo:rustc-link-lib=c_nonshared");
+        if cfg!(all(windows, target_env = "gnu")) {
+            ["bcrypt", "atomic", "winpthread", "gcc_s"]
+                .iter()
+                .for_each(|lib| println!("cargo:rustc-link-lib=dylib={}", lib));
         }
-    } else if cfg!(windows) {
-        // not need for explicit c++ runtime
-    } else {
-        // link c++ runtime
-        println!(
-            "cargo:rustc-link-lib={}",
-            std::env::var("CXXSTDLIB").unwrap_or_else(|_| {
-                if cfg!(target_os = "macos") || cfg!(target_os = "openbsd") {
-                    "c++".to_string()
-                } else {
-                    "stdc++".to_string()
-                }
-            })
-        )
+        if cfg!(target_os = "linux") {
+            println!("cargo:rustc-link-lib=dylib=atomic");
+        }
+        if !cfg!(target_os = "freebsd") && cfg!(all(unix, not(target_os = "macos"))) {
+            if cfg!(target_env = "gnu") {
+                println!("cargo:rustc-link-lib=c_nonshared");
+            }
+        } else if !cfg!(windows) {
+            let cxxlib = if cfg!(any(target_os = "macos", target_os = "openbsd")) {
+                "c++"
+            } else {
+                "stdc++"
+            };
+            println!("cargo:rustc-link-lib={}", cxxlib);
+        }
     }
+}
+
+#[cfg(not(feature = "build_cc"))]
+fn configure_android(config: &mut cmake::Config, triple: &str) {
+    let ndk = std::env::var("ANDROID_NDK").expect("ANDROID_NDK environment variable not set");
+    config.define(
+        "CMAKE_TOOLCHAIN_FILE",
+        format!("{}/build/cmake/android.toolchain.cmake", ndk),
+    );
+
+    if let Ok(platform) = std::env::var("ANDROID_PLATFORM") {
+        config.define("ANDROID_PLATFORM", platform);
+    }
+
+    if cfg!(feature = "android-lld") {
+        config.define("ANDROID_LD", "lld");
+    }
+
+    let abi = match triple {
+        t if t.contains("aarch64") => "arm64-v8a",
+        t if t.contains("armv7") => {
+            config.define("ANDROID_ARM_MODE", "arm");
+            "armeabi-v7a"
+        }
+        t if t.contains("x86_64") => "x86_64",
+        t if t.contains("i686") => "x86",
+        t if t.contains("neon") => "armeabi-v7a with NEON",
+        t if t.contains("arm") => "armeabi-v7a",
+        _ => panic!("Unsupported Android architecture"),
+    };
+    config.define("ANDROID_ABI", abi);
 }
