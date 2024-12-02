@@ -173,7 +173,6 @@ fn main() {
     config
         .define("SNMALLOC_RUST_SUPPORT", "ON")
         .profile(build_type)
-        .generator("Ninja")
         .very_verbose(true)
         .define("CMAKE_SH", "CMAKE_SH-NOTFOUND");
 
