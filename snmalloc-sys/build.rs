@@ -33,6 +33,8 @@ fn configure_compiler(build: &mut cc::Build, optim_level: &str) {
 
     if target_os == "windows" {
         configure_windows_build(build);
+    } else if target_os == "linux" {
+        configure_linux_build(build);
     }
 
     build.flag_if_supported(optim_level)
@@ -42,7 +44,6 @@ fn configure_compiler(build: &mut cc::Build, optim_level: &str) {
         configure_msvc_build(build);
     }
 
-    // C++ Standard selection
     let cpp_std = if cfg!(feature = "usecxx17") {
         ["-std=c++17", "/std:c++17"]
     } else {
@@ -50,7 +51,6 @@ fn configure_compiler(build: &mut cc::Build, optim_level: &str) {
     };
     cpp_std.iter().for_each(|std| { build.flag_if_supported(std); });
 
-    // Unix-specific TLS model
     if (target_family == "unix" || target_env == "gnu") && target_os != "haiku" {
         let tls_model = if cfg!(feature = "local_dynamic_tls") {
             "-ftls-model=local-dynamic"
@@ -59,6 +59,16 @@ fn configure_compiler(build: &mut cc::Build, optim_level: &str) {
         };
         build.flag_if_supported(tls_model);
     }
+}
+
+#[cfg(feature = "build_cc")]
+fn configure_linux_build(build: &mut cc::Build) {
+    build.flag_if_supported("-fPIC")
+        .flag_if_supported("-pthread")
+        .flag_if_supported("-fno-exceptions")
+        .flag_if_supported("-fno-rtti")
+        .flag_if_supported("-mcx16")
+        .flag_if_supported("-Wno-unused-parameter");
 }
 
 #[cfg(feature = "build_cc")]
@@ -136,6 +146,7 @@ fn configure_linking() {
     }
     if target_os == "linux" {
         println!("cargo:rustc-link-lib=dylib=atomic");
+        println!("cargo:rustc-link-lib=dylib=stdc++");
     }
     if !cfg!(target_os = "freebsd") && cfg!(all(unix, not(target_os = "macos"))) {
         if cfg!(target_env = "gnu") {
@@ -150,6 +161,7 @@ fn configure_linking() {
         println!("cargo:rustc-link-lib={}", cxxlib);
     }
 }
+
 #[cfg(not(feature = "build_cc"))]
 use cmake::Config;
 
