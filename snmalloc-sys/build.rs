@@ -3,6 +3,14 @@
 use std::env;
 use std::fs;
 
+#[derive(Debug)]
+enum Compiler {
+    Clang,
+    Gcc,
+    Msvc,
+    Unknown
+}
+
 struct BuildConfig {
     debug: bool,
     optim_level: &'static str,
@@ -20,6 +28,7 @@ struct BuildConfig {
     builder: cc::Build,
     #[cfg(not(feature = "build_cc"))]
     builder: cmake::Config,
+    compiler: Compiler
 }
 impl std::fmt::Debug for BuildConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +69,7 @@ impl BuildConfig {
         
         #[cfg(not(feature = "build_cc"))]
         let builder = Config::new("snmalloc");
-        let config = Self {
+        let mut config = Self {
             debug,
             optim_level: if debug { "-O0" } else { "-O3" },
             target_os: env::var("CARGO_CFG_TARGET_OS").expect("target_os not defined!"),
@@ -78,17 +87,35 @@ impl BuildConfig {
             },
             features: BuildFeatures::new(),
             builder,
+            compiler: Compiler::Unknown,
         };
-
+        config.compiler = config.detect_compiler();
         config.embed_build_info();
         config
     }
+    fn detect_compiler(&self) -> Compiler {
+        if self.is_msvc() {
+            return Compiler::Msvc;
+        }
 
+        // Check for clang first since it can masquerade as gcc
+        if let Ok(cc) = env::var("CC") {
+            if cc.contains("clang") {
+                return Compiler::Clang;
+            }
+            if cc.contains("gcc") {
+                return Compiler::Gcc;
+            }
+        }
+
+        Compiler::Unknown
+    }
     fn embed_build_info(&self) {
         println!("cargo:rustc-env=BUILD_TARGET_OS={}", self.target_os);
         println!("cargo:rustc-env=BUILD_TARGET_ENV={}", self.target_env);
         println!("cargo:rustc-env=BUILD_TARGET_FAMILY={}", self.target_family);
         println!("cargo:rustc-env=BUILD_TARGET={}", self.target);
+        println!("cargo:rustc-env=BUILD_CC={:#?}", self.compiler);
         println!("cargo:rustc-env=BUILD_TYPE={}", self.build_type);
         println!("cargo:rustc-env=BUILD_DEBUG={}", self.debug);
         println!("cargo:rustc-env=BUILD_OPTIM_LEVEL={}", self.optim_level);
@@ -172,7 +199,16 @@ fn configure_features(config: &mut BuildConfig) {
     }
 
     if config.features.lto {
-        config.builder.define("SNMALLOC_IPO", "ON");
+        match config.compiler {
+            Compiler::Unknown => {
+                // Skip LTO for unknown compiler
+            }
+            _ => {
+                println!("{:?}",config.compiler);
+                // Enable LTO for known compilers (Clang, Gcc, Msvc)
+                config.builder.define("SNMALLOC_IPO", "ON");
+            }
+        }
     }
 
     if config.features.notls {
