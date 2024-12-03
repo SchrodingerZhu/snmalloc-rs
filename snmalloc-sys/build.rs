@@ -172,27 +172,44 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
             println!("cargo:rustc-link-search=native={}", dst.display());
         }
 
-        // Add gcc linking for C++17 thread atexit support
-        if config.is_gnu() && cfg!(feature = "usecxx17") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
+        // FreeBSD specific handling
+        if cfg!(target_os = "freebsd") {
+            println!("cargo:rustc-link-search=native=/usr/local/lib");
+            println!("cargo:rustc-link-lib=c++");
+            return;
         }
 
+        // Windows GNU handling
         if config.is_windows() && config.is_gnu() {
-            for lib in ["bcrypt", "winpthread", "stdc++"] {
-                println!("cargo:rustc-link-lib=dylib={}", lib);
-            }
-            if !config.is_clang_msys() {
-                for lib in ["atomic", "gcc_s"] {
-                    println!("cargo:rustc-link-lib=dylib={}", lib);
-                }
+            println!("cargo:rustc-link-lib=dylib=bcrypt");
+            println!("cargo:rustc-link-lib=dylib=winpthread");
+
+            if config.is_clang_msys() {
+                // CLANG64/CLANGARM64 specific
+                println!("cargo:rustc-link-lib=dylib=c++");
+            } else if config.is_ucrt64() {
+                // UCRT64 specific
+                println!("cargo:rustc-link-lib=dylib=stdc++");
+            } else {
+                // Regular MinGW
+                println!("cargo:rustc-link-lib=dylib=stdc++");
+                println!("cargo:rustc-link-lib=dylib=atomic");
             }
         }
 
+        // Linux specific handling
         if config.is_linux() {
             println!("cargo:rustc-link-lib=dylib=atomic");
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+            println!("cargo:rustc-link-lib=dylib=pthread");
+            
+            if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
+                println!("cargo:rustc-link-lib=dylib=gcc");
+            }
         }
 
-        if !cfg!(target_os = "freebsd") && config.is_unix() && !cfg!(target_os = "macos") {
+        // General Unix handling (excluding FreeBSD and macOS)
+        if config.is_unix() && !cfg!(target_os = "macos") && !cfg!(target_os = "freebsd") {
             if config.is_gnu() {
                 println!("cargo:rustc-link-lib=c_nonshared");
             }
