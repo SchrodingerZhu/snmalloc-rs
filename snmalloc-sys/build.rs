@@ -158,7 +158,7 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
 
     if config.is_msvc() {
         if !config.features.win8compat {
-            println!("cargo:rustc-link-lib=dylib=mincore");
+            println!("cargo:rustc-link-lib=mincore");
         }
         if let Some(dst) = dst {
             println!(
@@ -181,30 +181,30 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
 
         // Windows GNU handling
         if config.is_windows() && config.is_gnu() {
-            println!("cargo:rustc-link-lib=dylib=bcrypt");
-            println!("cargo:rustc-link-lib=dylib=winpthread");
+            println!("cargo:rustc-link-lib=bcrypt");
+            println!("cargo:rustc-link-lib=winpthread");
 
             if config.is_clang_msys() {
                 // CLANG64/CLANGARM64 specific
-                println!("cargo:rustc-link-lib=dylib=c++");
+                println!("cargo:rustc-link-lib=c++");
             } else if config.is_ucrt64() {
                 // UCRT64 specific
-                println!("cargo:rustc-link-lib=dylib=stdc++");
+                println!("cargo:rustc-link-lib=stdc++");
             } else {
                 // Regular MinGW
-                println!("cargo:rustc-link-lib=dylib=stdc++");
-                println!("cargo:rustc-link-lib=dylib=atomic");
+                println!("cargo:rustc-link-lib=stdc++");
+                println!("cargo:rustc-link-lib=atomic");
             }
         }
 
         // Linux specific handling
         if config.is_linux() {
-            println!("cargo:rustc-link-lib=dylib=atomic");
-            println!("cargo:rustc-link-lib=dylib=stdc++");
-            println!("cargo:rustc-link-lib=dylib=pthread");
+            println!("cargo:rustc-link-lib=atomic");
+            println!("cargo:rustc-link-lib=stdc++");
+            println!("cargo:rustc-link-lib=pthread");
             
             if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
-                println!("cargo:rustc-link-lib=dylib=gcc");
+                println!("cargo:rustc-link-lib=gcc");
             }
         }
 
