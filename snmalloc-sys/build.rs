@@ -157,7 +157,7 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
     println!("cargo:rustc-link-lib=static={}", config.target_lib);
 
     if config.is_msvc() {
-        if !cfg!(feature = "win8compat") {
+        if !config.features.win8compat {
             println!("cargo:rustc-link-lib=dylib=mincore");
         }
         if let Some(dst) = dst {
@@ -172,11 +172,17 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
             println!("cargo:rustc-link-search=native={}", dst.display());
         }
 
+        // Add gcc linking for C++17 thread atexit support
+        if config.is_gnu() && cfg!(feature = "usecxx17") {
+            println!("cargo:rustc-link-lib=dylib=gcc");
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+        }
+
         if config.is_windows() && config.is_gnu() {
             for lib in ["bcrypt", "winpthread", "stdc++"] {
                 println!("cargo:rustc-link-lib=dylib={}", lib);
             }
-            if !config.msystem.clone().map_or(false, |s| s.contains("CLANG")) {
+            if !config.is_clang_msys() {
                 for lib in ["atomic", "gcc_s"] {
                     println!("cargo:rustc-link-lib=dylib={}", lib);
                 }
@@ -230,7 +236,8 @@ fn configure_platform(config: &mut BuildConfig) {
         config.builder
             .flag_if_supported("-mcx16")
             .flag_if_supported("-fno-exceptions")
-            .flag_if_supported("-fno-rtti");
+            .flag_if_supported("-fno-rtti")
+            .flag_if_supported("-pthread"); // Add pthread support
 
         if let Some(msystem) = &config.msystem {
             match msystem.as_str() {
@@ -254,7 +261,7 @@ fn configure_platform(config: &mut BuildConfig) {
     } else if config.is_linux() {
         config.builder
             .flag_if_supported("-fPIC")
-            .flag_if_supported("-pthread")
+            .flag_if_supported("-pthread")  // Ensure pthread is enabled
             .flag_if_supported("-fno-exceptions")
             .flag_if_supported("-fno-rtti")
             .flag_if_supported("-mcx16")
