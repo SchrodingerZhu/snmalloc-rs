@@ -402,7 +402,7 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
         }
 
         // Linux specific handling
-        if config.is_linux() | config.is_unix() {
+        if config.is_linux() {
             println!("cargo:rustc-link-lib=atomic");
             println!("cargo:rustc-link-lib=stdc++");
             println!("cargo:rustc-link-lib=pthread");
