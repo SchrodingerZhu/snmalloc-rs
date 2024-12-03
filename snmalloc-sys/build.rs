@@ -174,7 +174,6 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
 
         // Add gcc linking for C++17 thread atexit support
         if config.is_gnu() && cfg!(feature = "usecxx17") {
-            println!("cargo:rustc-link-lib=dylib=gcc");
             println!("cargo:rustc-link-lib=dylib=stdc++");
         }
 
