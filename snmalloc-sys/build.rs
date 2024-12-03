@@ -203,6 +203,9 @@ fn configure_features(config: &mut BuildConfig) {
             Compiler::Unknown => {
                 // Skip LTO for unknown compiler
             }
+            Compiler::Msvc => {
+                // Skip LTO for unknown compiler
+            }
             _ => {
                 println!("{:?}",config.compiler);
                 // Enable LTO for known compilers (Clang, Gcc, Msvc)
