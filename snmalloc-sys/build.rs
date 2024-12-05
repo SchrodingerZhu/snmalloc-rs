@@ -236,8 +236,6 @@ impl BuilderDefine for cmake::Config {
 
     fn configure_cpp(&mut self, _debug: bool) -> &mut Self {
         self.define("SNMALLOC_RUST_SUPPORT", "ON")
-            .define("BUILD_SHARED_LIBS", "OFF")
-            .define("SNMALLOC_STATIC_LIBRARY", "ON")
             .very_verbose(true)
             .define("CMAKE_SH", "CMAKE_SH-NOTFOUND")
             .define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded")
