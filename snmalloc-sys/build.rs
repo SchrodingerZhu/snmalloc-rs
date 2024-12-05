@@ -98,29 +98,46 @@ impl BuildConfig {
     }
 
     fn detect_compiler(&self) -> Compiler {
-        if self.is_msvc() {
-            return Compiler::Msvc;
+        // Check MSYSTEM for MSYS2 environments
+        if let Some(msystem) = &self.msystem {
+            match msystem.as_str() {
+                "CLANG64" | "CLANGARM64" => return Compiler::Clang,
+                "MINGW64" | "UCRT64" => return Compiler::Gcc,
+                _ => {}
+            }
         }
 
+        // Check target environment
+        if let Ok(env) = env::var("CARGO_CFG_TARGET_ENV") {
+            match env.as_str() {
+                "msvc" => return Compiler::Msvc,
+                "gnu" => return Compiler::Gcc,
+                _ => {}
+            }
+        }
+
+        // Check CC environment variable
         if let Ok(cc) = env::var("CC") {
             let cc = cc.to_lowercase();
             if cc.contains("clang") {
                 return Compiler::Clang;
-            }
-            if cc.contains("gcc") {
+            } else if cc.contains("gcc") {
                 return Compiler::Gcc;
             }
         }
 
-        // Fallback detection based on target triple
-        if self.target.contains("clang") {
-            Compiler::Clang
-        } else if self.target.contains("gcc") || self.is_gnu() {
-            Compiler::Gcc
+        // Default based on platform and target
+        if self.target.contains("msvc") {
+            Compiler::Msvc
+        } else if cfg!(windows) {
+            Compiler::Gcc // Assume GCC for non-MSVC Windows environments
+        } else if cfg!(unix) {
+            Compiler::Clang // Default to Clang for Unix-like systems
         } else {
             Compiler::Unknown
         }
     }
+
 
     fn embed_build_info(&self) {
         let build_info = [
@@ -213,6 +230,7 @@ impl BuilderDefine for cc::Build {
             .file("snmalloc/src/snmalloc/override/rust.cc")
             .cpp(true)
             .debug(debug)
+            .static_crt(true)
     }
 }
 
@@ -238,7 +256,8 @@ impl BuilderDefine for cmake::Config {
         self.define("SNMALLOC_RUST_SUPPORT", "ON")
             .very_verbose(true)
             .define("CMAKE_SH", "CMAKE_SH-NOTFOUND")
-            .define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded")
+            .always_configure(true)
+            .static_crt(true)
     }
 }
 
@@ -305,7 +324,7 @@ fn configure_platform(config: &mut BuildConfig) {
                             config.builder.flag_if_supported("-flto=thin");
                         }
                     }
-                    "UCRT64" => {
+                    "UCRT64" | "MINGW64" => {
                         let defines = vec![
                             ("CMAKE_CXX_FLAGS", "-fuse-ld=lld -Wno-error=unknown-pragmas"),
                             ("CMAKE_SYSTEM_NAME", "Windows"),
@@ -390,57 +409,25 @@ fn configure_platform(config: &mut BuildConfig) {
 }
 
 
-fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
-    // Basic library configuration
-    println!("cargo:rustc-link-lib=static={}", config.target_lib);
-
-    // Configure library search paths
-    if let Some(dst) = dst {
-        let path = dst.display().to_string();
-        // Convert Windows paths to Linux paths when running in WSL
-        let path = if cfg!(target_os = "linux") {
-            path.replace("\\", "/")
-        } else {
-            path
-        };
-        println!("cargo:rustc-link-search=native={}", path);
-        println!("cargo:rustc-link-search=native={}/build", path);
-        println!("cargo:rustc-link-search=native={}/build/Release", path);
-        println!("cargo:rustc-link-search=native={}/build/Debug", path);
-    }
+fn configure_linking(config: &BuildConfig) {
 
     match () {
         _ if config.is_msvc() => {
+            // Windows MSVC specific libraries
             if !config.features.win8compat {
                 println!("cargo:rustc-link-lib=mincore");
             }
+            // Essential Windows libraries
             println!("cargo:rustc-link-lib=kernel32");
             println!("cargo:rustc-link-lib=user32");
             println!("cargo:rustc-link-lib=advapi32");
             println!("cargo:rustc-link-lib=ws2_32");
             println!("cargo:rustc-link-lib=userenv");
+            println!("cargo:rustc-link-lib=bcrypt");
             println!("cargo:rustc-link-lib=msvcrt");
         }
-        _ if cfg!(target_os = "freebsd") => {
-            println!("cargo:rustc-link-search=native=/usr/local/lib");
-            println!("cargo:rustc-link-lib=c++");
-        }
-        _ if config.is_linux() => {
-            println!("cargo:rustc-link-lib=atomic");
-            println!("cargo:rustc-link-lib=stdc++");
-            println!("cargo:rustc-link-lib=pthread");
-            println!("cargo:rustc-link-lib=c");
-            println!("cargo:rustc-link-lib=gcc_s");
-            println!("cargo:rustc-link-lib=util");
-            println!("cargo:rustc-link-lib=rt");
-            println!("cargo:rustc-link-lib=dl");
-            println!("cargo:rustc-link-lib=m");
-            
-            if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
-                println!("cargo:rustc-link-lib=gcc");
-            }
-        }
         _ if config.is_windows() && config.is_gnu() => {
+            println!("cargo:rustc-link-lib=kernel32");
             println!("cargo:rustc-link-lib=bcrypt");
             println!("cargo:rustc-link-lib=winpthread");
 
@@ -453,11 +440,34 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
                 println!("cargo:rustc-link-lib=atomic");
             }
         }
-        _ if config.is_unix() && !cfg!(any(target_os = "macos", target_os = "freebsd")) => {
-            if config.is_gnu() {
+        _ if cfg!(target_os = "freebsd") => {
+            println!("cargo:rustc-link-lib=c++");
+        }
+        _ if config.is_unix() => {
+            println!("cargo:rustc-link-lib=pthread");
+            println!("cargo:rustc-link-lib=dl");
+            println!("cargo:rustc-link-lib=m");
+            println!("cargo:rustc-link-lib=stdc++");
+
+            // Linux-specific libraries
+            if config.is_linux() {
+                println!("cargo:rustc-link-lib=atomic");
+                println!("cargo:rustc-link-lib=gcc_s");
+                println!("cargo:rustc-link-lib=util");
+                println!("cargo:rustc-link-lib=rt");
+
+                if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
+                    println!("cargo:rustc-link-lib=gcc");
+                }
+            }
+
+            // GNU-specific library for non-macOS/FreeBSD Unix systems
+            if config.is_gnu() && !cfg!(any(target_os = "macos", target_os = "freebsd")) {
                 println!("cargo:rustc-link-lib=c_nonshared");
             }
         }
+
+        // Catch-all for non-Windows platforms (e.g., macOS, OpenBSD)
         _ if !config.is_windows() => {
             let cxxlib = if cfg!(any(target_os = "macos", target_os = "openbsd")) {
                 "c++"
@@ -466,6 +476,7 @@ fn configure_linking(config: &BuildConfig, dst: Option<&std::path::PathBuf>) {
             };
             println!("cargo:rustc-link-lib={}", cxxlib);
         }
+
         _ => {}
     }
 }
@@ -486,13 +497,12 @@ fn main() {
     configure_platform(&mut config);
 
     // Build and configure output
-    println!("cargo:rustc-link-search=native={}", config.out_dir);
-    
+    println!("cargo:rustc-link-search=/usr/local/lib");
+    println!("cargo:rustc-link-search={}", config.out_dir);
+    println!("cargo:rustc-link-search={}/build", config.out_dir);
+    println!("cargo:rustc-link-search={}/build/Debug", config.out_dir);
+    println!("cargo:rustc-link-search={}/build/Release", config.out_dir);
     let mut dst = config.builder.build_lib(&config.target_lib);
-    dst.push("build");
-    if config.is_msvc() {
-        dst.push(&config.build_type);
-    }
-    configure_linking(&config, Some(&dst));
+    println!("cargo:rustc-link-lib={}", config.target_lib);
+    configure_linking(&config);
 }
-
