@@ -443,31 +443,26 @@ fn configure_linking(config: &BuildConfig) {
         _ if cfg!(target_os = "freebsd") => {
             println!("cargo:rustc-link-lib=c++");
         }
-        _ if config.is_unix() => {
+        _ if config.is_linux() => {
+            println!("cargo:rustc-link-lib=atomic");
+            println!("cargo:rustc-link-lib=stdc++");
             println!("cargo:rustc-link-lib=pthread");
+            println!("cargo:rustc-link-lib=c");
+            println!("cargo:rustc-link-lib=gcc_s");
+            println!("cargo:rustc-link-lib=util");
+            println!("cargo:rustc-link-lib=rt");
             println!("cargo:rustc-link-lib=dl");
             println!("cargo:rustc-link-lib=m");
-            println!("cargo:rustc-link-lib=stdc++");
-
-            // Linux-specific libraries
-            if config.is_linux() {
-                println!("cargo:rustc-link-lib=atomic");
-                println!("cargo:rustc-link-lib=gcc_s");
-                println!("cargo:rustc-link-lib=util");
-                println!("cargo:rustc-link-lib=rt");
-
-                if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
-                    println!("cargo:rustc-link-lib=gcc");
-                }
+            
+            if cfg!(feature = "usecxx17") && !config.is_clang_msys() {
+                println!("cargo:rustc-link-lib=gcc");
             }
-
-            // GNU-specific library for non-macOS/FreeBSD Unix systems
-            if config.is_gnu() && !cfg!(any(target_os = "macos", target_os = "freebsd")) {
+        }
+        _ if config.is_unix() && !cfg!(any(target_os = "macos", target_os = "freebsd")) => {
+            if config.is_gnu() {
                 println!("cargo:rustc-link-lib=c_nonshared");
             }
         }
-
-        // Catch-all for non-Windows platforms (e.g., macOS, OpenBSD)
         _ if !config.is_windows() => {
             let cxxlib = if cfg!(any(target_os = "macos", target_os = "openbsd")) {
                 "c++"
@@ -476,7 +471,6 @@ fn configure_linking(config: &BuildConfig) {
             };
             println!("cargo:rustc-link-lib={}", cxxlib);
         }
-
         _ => {}
     }
 }
