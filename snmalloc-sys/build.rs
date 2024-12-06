@@ -360,7 +360,7 @@ fn configure_platform(config: &mut BuildConfig) {
                 .define("CMAKE_CXX_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc")
                 .define("CMAKE_C_FLAGS_RELEASE", "/O2 /Ob2 /DNDEBUG /EHsc");
         }
-        _ if config.is_linux() || config.is_unix() => {
+        _ if config.is_unix() => {
             let unix_flags = vec!["-fPIC", "-pthread", "-fno-exceptions", "-fno-rtti", "-mcx16", "-Wno-unused-parameter"];
             for flag in unix_flags {
                 config.builder.flag_if_supported(flag);
